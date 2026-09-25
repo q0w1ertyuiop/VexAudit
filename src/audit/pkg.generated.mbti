@@ -12,6 +12,10 @@ pub fn reconcile_one(Inventory, Array[Statement], Finding) -> Decision
 
 pub fn report_json(Report) -> String
 
+pub fn timestamp_order(String, String) -> Int?
+
+pub fn valid_timestamp(String) -> Bool
+
 // Errors
 
 // Types and methods
@@ -71,6 +75,7 @@ pub(all) struct PathEvidence {
   bom_refs : Array[String]
   purls : Array[String]
   statement_ids : Array[String]
+  superseded_statement_ids : Array[String]
   statuses : Array[Status]
 } derive(ToJson, @debug.Debug)
 pub fn PathEvidence::to_json(Self) -> Json

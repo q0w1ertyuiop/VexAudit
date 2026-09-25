@@ -46,28 +46,74 @@ fn collect_paths(
 }
 
 ///|
-fn statement_applies(
+priv struct Claim {
+  statement_index : Int
+  subject_index : Int
+}
+
+///|
+fn subject_applies(
   inventory : Inventory,
-  statement : Statement,
+  subject : Subject,
   finding : Finding,
   path : Array[String],
 ) -> Bool {
-  if statement.vulnerability != finding.vulnerability &&
-    !statement.aliases.contains(finding.vulnerability) {
+  if !subject.subcomponent_purls.is_empty() &&
+    !subject.subcomponent_purls.contains(finding.component_purl) {
     return false
   }
-  for subject in statement.subjects {
-    if !subject.subcomponent_purls.is_empty() &&
-      !subject.subcomponent_purls.contains(finding.component_purl) {
-      continue
-    }
-    for node in path {
-      if component_purl(inventory, node) == Some(subject.product_purl) {
-        return true
-      }
+  for node in path {
+    if component_purl(inventory, node) == Some(subject.product_purl) {
+      return true
     }
   }
   false
+}
+
+///|
+fn same_scope(left : Subject, right : Subject) -> Bool {
+  if left.product_purl != right.product_purl ||
+    left.subcomponent_purls.length() != right.subcomponent_purls.length() {
+    return false
+  }
+  for purl in left.subcomponent_purls {
+    let mut left_count = 0
+    let mut right_count = 0
+    for item in left.subcomponent_purls {
+      if item == purl {
+        left_count = left_count + 1
+      }
+    }
+    for item in right.subcomponent_purls {
+      if item == purl {
+        right_count = right_count + 1
+      }
+    }
+    if left_count != right_count {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn superseded_by(
+  older : Claim,
+  newer : Claim,
+  statements : Array[Statement],
+) -> Bool {
+  let old_statement = statements[older.statement_index]
+  let new_statement = statements[newer.statement_index]
+  if old_statement.author != new_statement.author ||
+    old_statement.document_id != new_statement.document_id ||
+    old_statement.vulnerability != new_statement.vulnerability ||
+    !same_scope(
+      old_statement.subjects[older.subject_index],
+      new_statement.subjects[newer.subject_index],
+    ) {
+    return false
+  }
+  timestamp_order(old_statement.timestamp, new_statement.timestamp) == Some(-1)
 }
 
 ///|
@@ -132,10 +178,35 @@ pub fn reconcile_one(
   let path_evidence : Array[PathEvidence] = []
   let mut uncovered = false
   for path in paths {
+    let claims : Array[Claim] = []
+    for statement_index, statement in statements {
+      if statement.vulnerability != finding.vulnerability &&
+        !statement.aliases.contains(finding.vulnerability) {
+        continue
+      }
+      for subject_index, subject in statement.subjects {
+        if subject_applies(inventory, subject, finding, path) {
+          claims.push({ statement_index, subject_index, })
+        }
+      }
+    }
     let path_statement_ids : Array[String] = []
+    let superseded_statement_ids : Array[String] = []
     let path_statuses : Array[Status] = []
-    for statement in statements {
-      if statement_applies(inventory, statement, finding, path) {
+    for claim in claims {
+      let statement = statements[claim.statement_index]
+      let mut superseded = false
+      for candidate in claims {
+        if superseded_by(claim, candidate, statements) {
+          superseded = true
+          break
+        }
+      }
+      if superseded {
+        if !superseded_statement_ids.contains(statement.id) {
+          superseded_statement_ids.push(statement.id)
+        }
+      } else {
         if !statuses.contains(statement.status) {
           statuses.push(statement.status)
         }
@@ -164,6 +235,7 @@ pub fn reconcile_one(
       bom_refs: path,
       purls,
       statement_ids: path_statement_ids,
+      superseded_statement_ids,
       statuses: path_statuses,
     })
   }

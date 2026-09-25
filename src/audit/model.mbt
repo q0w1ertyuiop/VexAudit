@@ -113,6 +113,7 @@ pub(all) struct PathEvidence {
   bom_refs : Array[String]
   purls : Array[String]
   statement_ids : Array[String]
+  superseded_statement_ids : Array[String]
   statuses : Array[Status]
 } derive(Debug, ToJson)
 

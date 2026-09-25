@@ -1,0 +1,36 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://example.test/vex/history",
+  "author": "Demo Maintainers",
+  "timestamp": "2026-09-25T00:00:00Z",
+  "version": 2,
+  "statements": [
+    {
+      "@id": "https://example.test/vex/history#investigating",
+      "timestamp": "2026-09-24T23:00:00Z",
+      "vulnerability": { "name": "CVE-2026-1000" },
+      "products": [
+        {
+          "@id": "pkg:generic/demo-app@1.0.0",
+          "subcomponents": [
+            { "@id": "pkg:generic/shared@2.0.0" }
+          ]
+        }
+      ],
+      "status": "under_investigation"
+    },
+    {
+      "@id": "https://example.test/vex/history#fixed",
+      "vulnerability": { "name": "CVE-2026-1000" },
+      "products": [
+        {
+          "@id": "pkg:generic/demo-app@1.0.0",
+          "subcomponents": [
+            { "@id": "pkg:generic/shared@2.0.0" }
+          ]
+        }
+      ],
+      "status": "fixed"
+    }
+  ]
+}

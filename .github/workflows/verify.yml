@@ -38,3 +38,7 @@ jobs:
         run: |
           moon run src/cli --target js samples/diamond/bom.cdx.json samples/diamond/findings.json samples/diamond/complete.openvex.json > complete.json
           node -e 'const r=require("./complete.json"); if(r.decisions[0].outcome!=="NotAffected" || r.decisions[0].statement_ids.length!==2) process.exit(1)'
+      - name: Check statement history
+        run: |
+          moon run src/cli --target js samples/diamond/bom.cdx.json samples/diamond/findings.json samples/diamond/history.openvex.json > history.json
+          node -e 'const d=require("./history.json").decisions[0]; if(d.outcome!=="Fixed" || d.statement_ids.length!==1 || d.paths.some(p=>p.superseded_statement_ids.length!==1)) process.exit(1)'

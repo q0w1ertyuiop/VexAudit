@@ -34,6 +34,28 @@ fn claim(id : String, product : String, status : Status) -> Statement {
 }
 
 ///|
+fn dated_claim(
+  id : String,
+  author : String,
+  timestamp : String,
+  product : String,
+  status : Status,
+) -> Statement {
+  {
+    id,
+    document_id: "https://example.test/vex/history",
+    author,
+    timestamp,
+    vulnerability: "CVE-2026-1000",
+    aliases: [],
+    status,
+    subjects: [
+      { product_purl: product, subcomponent_purls: ["pkg:generic/lib@2"], },
+    ],
+  }
+}
+
+///|
 fn vulnerable_lib() -> Finding {
   {
     id: "scan-1",
@@ -118,4 +140,112 @@ test "a disconnected duplicate PURL prevents a complete claim" {
   )
   assert_eq(decision.outcome, Incomplete)
   assert_eq(decision.paths.length(), 2)
+}
+
+///|
+test "a later same-author claim replaces the same scope across time zones" {
+  let old = dated_claim(
+    "old",
+    "Example Team",
+    "2026-09-25T00:00:00+02:00",
+    "pkg:generic/app@1",
+    Affected,
+  )
+  let current = dated_claim(
+    "current",
+    "Example Team",
+    "2026-09-24T23:00:00Z",
+    "pkg:generic/app@1",
+    Fixed,
+  )
+  let decision = reconcile_one(diamond(), [old, current], vulnerable_lib())
+  assert_eq(decision.outcome, Fixed)
+  assert_eq(decision.statement_ids, ["current"])
+  assert_eq(decision.paths[0].superseded_statement_ids, ["old"])
+  assert_eq(decision.paths[1].superseded_statement_ids, ["old"])
+}
+
+///|
+test "same instant and different authors do not silently resolve conflicts" {
+  let old = dated_claim(
+    "old",
+    "Example Team",
+    "2026-09-25T00:00:00+02:00",
+    "pkg:generic/app@1",
+    Affected,
+  )
+  let same_instant = dated_claim(
+    "same-instant",
+    "Example Team",
+    "2026-09-24T22:00:00Z",
+    "pkg:generic/app@1",
+    Fixed,
+  )
+  assert_eq(
+    reconcile_one(diamond(), [old, same_instant], vulnerable_lib()).outcome,
+    Conflict,
+  )
+  let other_author = dated_claim(
+    "other-author",
+    "Another Team",
+    "2026-09-26T00:00:00Z",
+    "pkg:generic/app@1",
+    Fixed,
+  )
+  assert_eq(
+    reconcile_one(diamond(), [old, other_author], vulnerable_lib()).outcome,
+    Conflict,
+  )
+}
+
+///|
+test "a narrower later claim cannot replace a broader scope" {
+  let broad = dated_claim(
+    "broad",
+    "Example Team",
+    "2026-09-24T00:00:00Z",
+    "pkg:generic/app@1",
+    Affected,
+  )
+  let narrow = dated_claim(
+    "narrow",
+    "Example Team",
+    "2026-09-25T00:00:00Z",
+    "pkg:generic/left@1",
+    NotAffected,
+  )
+  let decision = reconcile_one(diamond(), [broad, narrow], vulnerable_lib())
+  assert_eq(decision.outcome, Conflict)
+  assert_eq(decision.paths[0].statement_ids, ["broad", "narrow"])
+  assert_eq(decision.paths[1].statement_ids, ["broad"])
+}
+
+///|
+test "a separate document cannot silently replace an earlier document" {
+  let old = dated_claim(
+    "old",
+    "Example Team",
+    "2026-09-24T00:00:00Z",
+    "pkg:generic/app@1",
+    Affected,
+  )
+  let newer : Statement = {
+    id: "other-document",
+    document_id: "https://example.test/vex/independent",
+    author: "Example Team",
+    timestamp: "2026-09-25T00:00:00Z",
+    vulnerability: "CVE-2026-1000",
+    aliases: [],
+    status: Fixed,
+    subjects: [
+      {
+        product_purl: "pkg:generic/app@1",
+        subcomponent_purls: ["pkg:generic/lib@2"],
+      },
+    ],
+  }
+  assert_eq(
+    reconcile_one(diamond(), [old, newer], vulnerable_lib()).outcome,
+    Conflict,
+  )
 }

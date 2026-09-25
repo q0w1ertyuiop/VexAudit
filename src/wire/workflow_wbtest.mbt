@@ -60,3 +60,10 @@ test "statement time overrides document time" {
   }
   assert_eq(statements[0].timestamp, "2026-09-24T00:00:00Z")
 }
+
+///|
+test "calendar-invalid statement times cannot affect an audit" {
+  let vex =
+    #|{"@context":"https://openvex.dev/ns/v0.2.0","@id":"https://example.test/vex/bad-time","author":"Example Team","timestamp":"2026-09-25T00:00:00Z","version":1,"statements":[{"timestamp":"2026-02-29T00:00:00Z","vulnerability":{"name":"CVE-2026-1000"},"products":[{"@id":"pkg:generic/app@1"}],"status":"fixed"}]}
+  assert_eq(read_openvex(vex) is Err(_), true)
+}

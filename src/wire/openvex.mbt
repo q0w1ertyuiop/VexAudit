@@ -157,6 +157,9 @@ fn parse_statement(
     Ok(None) => document_timestamp
     Err(message) => return Err(message)
   }
+  if !@audit.valid_timestamp(timestamp) {
+    return Err("\{path}.timestamp must be RFC 3339")
+  }
   let vulnerability_data = match object_field(fields, "vulnerability", path) {
     Ok(value) => value
     Err(message) => return Err(message)
@@ -261,6 +264,9 @@ pub fn read_openvex(
   let timestamp = match string_field(root, "timestamp", "OpenVEX") {
     Ok(value) => value
     Err(message) => return Err(message)
+  }
+  if !@audit.valid_timestamp(timestamp) {
+    return Err("OpenVEX.timestamp must be RFC 3339")
   }
   match field(root, "version", "OpenVEX") {
     Ok(Number(value, ..)) if value >= 1.0 && value.trunc() == value => ()
