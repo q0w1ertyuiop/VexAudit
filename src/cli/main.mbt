@@ -20,18 +20,33 @@ extern "js" fn set_exit_code(code : Int) -> Unit =
 ///|
 fn main {
   let args = @env.args()
-  let trivy_mode = args.length() == 6 && args[2] == "--trivy"
-  if args.length() != 5 && !trivy_mode {
+  let mut trivy_mode = false
+  let mut require_clear = false
+  let mut input_start = 2
+  while input_start < args.length() && args[input_start].has_prefix("--") {
+    match args[input_start] {
+      "--trivy" if !trivy_mode => trivy_mode = true
+      "--require-clear" if !require_clear => require_clear = true
+      _ => {
+        write_error(
+          "vexaudit: unknown or duplicate option: \{args[input_start]}\n",
+        )
+        set_exit_code(2)
+        return
+      }
+    }
+    input_start = input_start + 1
+  }
+  if args.length() != input_start + 3 {
     write_error(
-      "usage: vexaudit [--trivy] <sbom.cdx.json> <findings.json|trivy.json> <openvex.json>\n",
+      "usage: vexaudit [--trivy] [--require-clear] <sbom.cdx.json> <findings.json|trivy.json> <openvex.json>\n",
     )
     set_exit_code(2)
     return
   }
-  let offset = if trivy_mode { 1 } else { 0 }
-  let sbom = read_text(args[2 + offset])
-  let findings = read_text(args[3 + offset])
-  let vex = read_text(args[4 + offset])
+  let sbom = read_text(args[input_start])
+  let findings = read_text(args[input_start + 1])
+  let vex = read_text(args[input_start + 2])
   if sbom.is_empty() || findings.is_empty() || vex.is_empty() {
     write_error("vexaudit: unable to read an input file or input is empty\n")
     set_exit_code(2)
@@ -77,9 +92,16 @@ fn main {
     }
   }
   let report = @audit.reconcile(inventory, statements, finding_rows)
+  let mut has_unresolved = false
   match imported {
-    Some(value) => write_output(@wire.trivy_report_json(report, value))
+    Some(value) => {
+      has_unresolved = !value.unresolved.is_empty()
+      write_output(@wire.trivy_report_json(report, value))
+    }
     None => write_output(@audit.report_json(report))
   }
   write_output("\n")
+  if require_clear && (!@audit.all_findings_cleared(report) || has_unresolved) {
+    set_exit_code(1)
+  }
 }

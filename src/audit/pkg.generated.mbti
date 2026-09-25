@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub fn all_findings_cleared(Report) -> Bool
+
 pub fn reconcile(Inventory, Array[Statement], Array[Finding]) -> Report
 
 pub fn reconcile_one(Inventory, Array[Statement], Finding) -> Decision

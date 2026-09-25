@@ -249,3 +249,46 @@ test "a separate document cannot silently replace an earlier document" {
     Conflict,
   )
 }
+
+///|
+test "release gate accepts complete favorable claims and rejects uncertain findings" {
+  let inventory = diamond()
+  let finding = vulnerable_lib()
+  let clear = reconcile(
+    inventory,
+    [
+      claim("left", "pkg:generic/left@1", NotAffected),
+      claim("right", "pkg:generic/right@1", NotAffected),
+    ],
+    [finding],
+  )
+  assert_eq(all_findings_cleared(clear), true)
+  assert_eq(
+    all_findings_cleared(
+      reconcile(inventory, [claim("fixed", "pkg:generic/app@1", Fixed)], [
+        finding,
+      ]),
+    ),
+    true,
+  )
+  assert_eq(
+    all_findings_cleared(
+      reconcile(
+        inventory,
+        [claim("partial", "pkg:generic/left@1", NotAffected)],
+        [finding],
+      ),
+    ),
+    false,
+  )
+  assert_eq(
+    all_findings_cleared(
+      reconcile(inventory, [claim("affected", "pkg:generic/app@1", Affected)], [
+        finding,
+      ]),
+    ),
+    false,
+  )
+  assert_eq(all_findings_cleared(reconcile(inventory, [], [finding])), false)
+  assert_eq(all_findings_cleared(reconcile(inventory, [], [])), true)
+}

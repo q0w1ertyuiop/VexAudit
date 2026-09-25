@@ -46,3 +46,11 @@ jobs:
         run: |
           moon run src/cli --target js --trivy samples/diamond/bom.cdx.json samples/diamond/trivy.json samples/diamond/partial.openvex.json > trivy-audit.json
           node -e 'const r=require("./trivy-audit.json"); if(r.decisions.length!==1 || r.decisions[0].finding_id!=="Results[0].Vulnerabilities[0]" || r.decisions[0].outcome!=="Incomplete" || r.unresolved.length!==1 || r.unresolved[0].row!=="Results[0].Vulnerabilities[1]") process.exit(1)'
+      - name: Check CI gate and retained reports
+        run: |
+          moon run src/cli --target js --require-clear samples/diamond/bom.cdx.json samples/diamond/findings.json samples/diamond/complete.openvex.json > clear-gate.json
+          node -e 'const r=require("./clear-gate.json"); if(r.decisions[0].outcome!=="NotAffected") process.exit(1)'
+          if moon run src/cli --target js --require-clear samples/diamond/bom.cdx.json samples/diamond/findings.json samples/diamond/partial.openvex.json > partial-gate.json; then exit 1; fi
+          node -e 'const r=require("./partial-gate.json"); if(r.decisions[0].outcome!=="Incomplete") process.exit(1)'
+          if moon run src/cli --target js --trivy --require-clear samples/diamond/bom.cdx.json samples/diamond/trivy.json samples/diamond/complete.openvex.json > unresolved-gate.json; then exit 1; fi
+          node -e 'const r=require("./unresolved-gate.json"); if(r.decisions[0].outcome!=="NotAffected" || r.unresolved.length!==1) process.exit(1)'
