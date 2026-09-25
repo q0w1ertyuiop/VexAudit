@@ -7,12 +7,21 @@
       "Target": "demo-image",
       "Class": "lang-pkgs",
       "Type": "generic",
+      "Packages": [
+        {
+          "Name": "shared",
+          "Identifier": {
+            "UID": "demo-shared-uid",
+            "PURL": "pkg:generic/shared@2.0.0"
+          }
+        }
+      ],
       "Vulnerabilities": [
         {
           "VulnerabilityID": "CVE-2026-1000",
           "PkgName": "shared",
           "InstalledVersion": "2.0.0",
-          "PkgIdentifier": { "PURL": "pkg:generic/shared@2.0.0" }
+          "PkgIdentifier": { "UID": "demo-shared-uid" }
         },
         {
           "VulnerabilityID": "CVE-2026-2000",

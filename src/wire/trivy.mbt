@@ -82,6 +82,42 @@ pub fn read_trivy_json(source : StringView) -> Result[TrivyImport, String] {
       Some(String(value)) => value
       _ => ""
     }
+    let packages = match result_fields.get("Packages") {
+      None | Some(Null) => []
+      Some(value) =>
+        match array(value, "\{result_path}.Packages") {
+          Ok(value) => value
+          Err(message) => return Err(message)
+        }
+    }
+    let package_purls : Map[String, String] = Map([])
+    for package_index, package_json in packages {
+      let package_path = "\{result_path}.Packages[\{package_index}]"
+      let package_fields = match object(package_json, package_path) {
+        Ok(value) => value
+        Err(message) => return Err(message)
+      }
+      let identifier = match package_fields.get("Identifier") {
+        Some(Object(value)) => value
+        _ => continue
+      }
+      let uid = match identifier.get("UID") {
+        Some(String(value)) => value
+        _ => ""
+      }
+      if uid.is_empty() {
+        continue
+      }
+      let purl = match identifier.get("PURL") {
+        Some(String(value)) if value.has_prefix("pkg:") => value
+        _ => ""
+      }
+      match package_purls.get(uid) {
+        None => package_purls.set(uid, purl)
+        Some(previous) if previous != purl => package_purls.set(uid, "")
+        _ => ()
+      }
+    }
     let vulnerabilities = match result_fields.get("Vulnerabilities") {
       None | Some(Null) => []
       Some(value) =>
@@ -109,22 +145,63 @@ pub fn read_trivy_json(source : StringView) -> Result[TrivyImport, String] {
         })
         continue
       }
-      let purl = match fields.get("PkgIdentifier") {
-        Some(Object(identifier)) =>
-          match identifier.get("PURL") {
-            Some(String(value)) => value
-            _ => ""
-          }
+      let identifier = match fields.get("PkgIdentifier") {
+        Some(Object(value)) => value
+        _ => {
+          unresolved.push({
+            row,
+            target,
+            vulnerability,
+            reason: "PkgIdentifier.PURL is missing or invalid",
+          })
+          continue
+        }
+      }
+      let direct_purl = match identifier.get("PURL") {
+        Some(String(value)) => value
         _ => ""
       }
-      if !purl.has_prefix("pkg:") {
+      let uid = match identifier.get("UID") {
+        Some(String(value)) => value
+        _ => ""
+      }
+      let package_purl = package_purls.get(uid)
+      if !direct_purl.is_empty() && !direct_purl.has_prefix("pkg:") {
         unresolved.push({
           row,
           target,
           vulnerability,
-          reason: "PkgIdentifier.PURL is missing or invalid",
+          reason: "PkgIdentifier.PURL is invalid",
         })
         continue
+      }
+      let purl = if direct_purl.is_empty() {
+        match package_purl {
+          Some(value) if !value.is_empty() => value
+          _ => {
+            unresolved.push({
+              row,
+              target,
+              vulnerability,
+              reason: "no unique Package URL for PkgIdentifier.UID",
+            })
+            continue
+          }
+        }
+      } else {
+        match package_purl {
+          Some(value) if value != direct_purl => {
+            unresolved.push({
+              row,
+              target,
+              vulnerability,
+              reason: "PkgIdentifier.PURL conflicts with Packages entry",
+            })
+            continue
+          }
+          _ => ()
+        }
+        direct_purl
       }
       findings.push({ id: row, vulnerability, component_purl: purl, })
     }
