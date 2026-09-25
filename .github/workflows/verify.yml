@@ -1,0 +1,40 @@
+name: Verify
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [wasm, wasm-gc, js]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hustcer/setup-moonbit@v1
+      - name: Check formatting
+        run: moon fmt --check
+      - name: Check package
+        run: moon check --target ${{ matrix.target }} --deny-warn
+      - name: Run tests
+        run: moon test --target ${{ matrix.target }} --deny-warn
+      - name: Verify public interfaces
+        run: |
+          moon info
+          git diff --exit-code -- src/audit/pkg.generated.mbti src/wire/pkg.generated.mbti
+
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hustcer/setup-moonbit@v1
+      - name: Check partial coverage
+        run: |
+          moon run src/cli --target js samples/diamond/bom.cdx.json samples/diamond/findings.json samples/diamond/partial.openvex.json > partial.json
+          node -e 'const r=require("./partial.json"); if(r.decisions[0].outcome!=="Incomplete") process.exit(1)'
+      - name: Check complete coverage
+        run: |
+          moon run src/cli --target js samples/diamond/bom.cdx.json samples/diamond/findings.json samples/diamond/complete.openvex.json > complete.json
+          node -e 'const r=require("./complete.json"); if(r.decisions[0].outcome!=="NotAffected" || r.decisions[0].statement_ids.length!==2) process.exit(1)'

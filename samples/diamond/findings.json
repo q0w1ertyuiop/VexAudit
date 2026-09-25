@@ -1,0 +1,9 @@
+{
+  "findings": [
+    {
+      "id": "scan-1",
+      "vulnerability": "CVE-2026-1000",
+      "component_purl": "pkg:generic/shared@2.0.0"
+    }
+  ]
+}

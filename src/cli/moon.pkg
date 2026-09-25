@@ -1,0 +1,9 @@
+import {
+  "q0w1ertyuiop/vexaudit/audit",
+  "q0w1ertyuiop/vexaudit/wire",
+  "moonbitlang/core/env",
+}
+
+supported_targets = "+js"
+
+pkgtype(kind: "executable")

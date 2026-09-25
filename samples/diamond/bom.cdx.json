@@ -1,0 +1,23 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "metadata": {
+    "component": {
+      "type": "application",
+      "name": "demo-app",
+      "bom-ref": "app",
+      "purl": "pkg:generic/demo-app@1.0.0"
+    }
+  },
+  "components": [
+    { "type": "library", "name": "left", "bom-ref": "left", "purl": "pkg:generic/left@1.0.0" },
+    { "type": "library", "name": "right", "bom-ref": "right", "purl": "pkg:generic/right@1.0.0" },
+    { "type": "library", "name": "shared", "bom-ref": "shared", "purl": "pkg:generic/shared@2.0.0" }
+  ],
+  "dependencies": [
+    { "ref": "app", "dependsOn": ["left", "right"] },
+    { "ref": "left", "dependsOn": ["shared"] },
+    { "ref": "right", "dependsOn": ["shared"] },
+    { "ref": "shared", "dependsOn": [] }
+  ]
+}
