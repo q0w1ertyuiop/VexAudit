@@ -51,6 +51,11 @@ test "one branch cannot clear a finding reachable through two branches" {
   )
   assert_eq(decision.outcome, Incomplete)
   assert_eq(decision.statement_ids, ["left-claim"])
+  assert_eq(decision.paths.length(), 2)
+  assert_eq(decision.paths[0].bom_refs, ["app", "left", "lib"])
+  assert_eq(decision.paths[0].statement_ids, ["left-claim"])
+  assert_eq(decision.paths[1].bom_refs, ["app", "right", "lib"])
+  assert_eq(decision.paths[1].statement_ids, [])
 }
 
 ///|
@@ -65,6 +70,8 @@ test "all dependency paths must carry the same claim" {
   )
   assert_eq(decision.outcome, NotAffected)
   assert_eq(decision.statement_ids, ["left-claim", "right-claim"])
+  assert_eq(decision.paths[0].statuses, [NotAffected])
+  assert_eq(decision.paths[1].statuses, [NotAffected])
 }
 
 ///|
@@ -78,6 +85,8 @@ test "disagreeing claims remain visible" {
     vulnerable_lib(),
   )
   assert_eq(decision.outcome, Conflict)
+  assert_eq(decision.paths[0].statuses, [NotAffected])
+  assert_eq(decision.paths[1].statuses, [Affected])
 }
 
 ///|
@@ -95,4 +104,18 @@ test "unmatched vulnerabilities and absent components are distinct" {
     component_purl: "pkg:generic/absent@1",
   })
   assert_eq(missing.outcome, ComponentMissing)
+  assert_eq(missing.paths.length(), 0)
+}
+
+///|
+test "a disconnected duplicate PURL prevents a complete claim" {
+  let inventory = diamond()
+  inventory.components.push({ bom_ref: "other-lib", purl: "pkg:generic/lib@2", })
+  let decision = reconcile_one(
+    inventory,
+    [claim("root-claim", "pkg:generic/app@1", NotAffected)],
+    vulnerable_lib(),
+  )
+  assert_eq(decision.outcome, Incomplete)
+  assert_eq(decision.paths.length(), 2)
 }

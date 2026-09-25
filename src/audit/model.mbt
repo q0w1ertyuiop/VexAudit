@@ -109,10 +109,25 @@ pub extend Outcome with @debug.Debug::{to_repr}
 pub extend Outcome with ToJson::{to_json}
 
 ///|
+pub(all) struct PathEvidence {
+  bom_refs : Array[String]
+  purls : Array[String]
+  statement_ids : Array[String]
+  statuses : Array[Status]
+} derive(Debug, ToJson)
+
+///|
+pub extend PathEvidence with @debug.Debug::{to_repr}
+
+///|
+pub extend PathEvidence with ToJson::{to_json}
+
+///|
 pub(all) struct Decision {
   finding_id : String
   outcome : Outcome
   statement_ids : Array[String]
+  paths : Array[PathEvidence]
   detail : String
 } derive(Debug, ToJson)
 

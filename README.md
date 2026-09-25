@@ -12,7 +12,7 @@ moon run src/cli --target js samples/diamond/bom.cdx.json samples/diamond/findin
 
 The finding remains `Incomplete`: one OpenVEX statement covers the path through `left`, while the vulnerable library is also reachable through `right`. Run the same command with `samples/diamond/complete.openvex.json` to see `NotAffected` with both contributing statement IDs. These examples are synthetic and make no claim about a real vulnerability.
 
-The `audit` package is a pure MoonBit core. It accepts an inventory, findings, and statements as values and returns one decision per finding. Each decision records the source statement IDs that contributed to it. `NoClaim`, `Incomplete`, and `Conflict` are distinct outcomes; the library never treats a missing claim as proof that a product is unaffected.
+The `audit` package is a pure MoonBit core. It accepts an inventory, findings, and statements as values and returns one decision per finding. Each decision records the source statement IDs that contributed to it. Its `paths` array shows each dependency path as BOM references and PURLs, with the applicable statement IDs and statuses for that path. An empty `statement_ids` array on a path shows exactly where coverage is missing. `NoClaim`, `Incomplete`, and `Conflict` are distinct outcomes; the library never treats a missing claim as proof that a product is unaffected.
 
 The main library flow is `@wire.read_cyclonedx`, `@wire.read_findings`, `@wire.read_openvex`, then `@audit.reconcile` and `@audit.report_json`. The command uses the same API and prints the JSON report. Invalid input or unreadable files exit with status 2. A valid report exits with status 0, including when its outcome is `Incomplete` or `Conflict`; callers can apply their own CI policy to the report.
 

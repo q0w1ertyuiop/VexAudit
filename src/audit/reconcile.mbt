@@ -100,6 +100,7 @@ pub fn reconcile_one(
       finding_id: finding.id,
       outcome: ComponentMissing,
       statement_ids: [],
+      paths: [],
       detail: "finding component is absent from the SBOM",
     }
   }
@@ -122,39 +123,68 @@ pub fn reconcile_one(
         Unreachable
       },
       statement_ids: [],
+      paths: [],
       detail: "the SBOM does not establish a dependency path to this component",
     }
   }
   let statuses : Array[Status] = []
   let statement_ids : Array[String] = []
+  let path_evidence : Array[PathEvidence] = []
   let mut uncovered = false
   for path in paths {
-    let mut path_covered = false
+    let path_statement_ids : Array[String] = []
+    let path_statuses : Array[Status] = []
     for statement in statements {
       if statement_applies(inventory, statement, finding, path) {
-        path_covered = true
         if !statuses.contains(statement.status) {
           statuses.push(statement.status)
+        }
+        if !path_statuses.contains(statement.status) {
+          path_statuses.push(statement.status)
         }
         if !statement_ids.contains(statement.id) {
           statement_ids.push(statement.id)
         }
+        if !path_statement_ids.contains(statement.id) {
+          path_statement_ids.push(statement.id)
+        }
       }
     }
-    if !path_covered {
+    if path_statement_ids.is_empty() {
       uncovered = true
     }
+    let purls : Array[String] = []
+    for node in path {
+      match component_purl(inventory, node) {
+        Some(purl) => purls.push(purl)
+        None => uncertain.val = true
+      }
+    }
+    path_evidence.push({
+      bom_refs: path,
+      purls,
+      statement_ids: path_statement_ids,
+      statuses: path_statuses,
+    })
   }
   let (outcome, detail) = if statuses.length() > 1 {
     (Conflict, "applicable statements disagree on status")
   } else if statuses.is_empty() {
     (NoClaim, "no OpenVEX statement applies")
-  } else if uncovered || uncertain.val || missing_target_path {
-    (Incomplete, "the statement does not cover every known dependency path")
+  } else if uncovered {
+    (Incomplete, "at least one dependency path has no applicable statement")
+  } else if uncertain.val || missing_target_path {
+    (Incomplete, "the dependency graph cannot establish complete coverage")
   } else {
     (outcome_of_status(statuses[0]), "all dependency paths have the same claim")
   }
-  { finding_id: finding.id, outcome, statement_ids, detail, }
+  {
+    finding_id: finding.id,
+    outcome,
+    statement_ids,
+    paths: path_evidence,
+    detail,
+  }
 }
 
 ///|

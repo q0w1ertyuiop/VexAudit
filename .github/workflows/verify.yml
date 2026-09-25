@@ -33,7 +33,7 @@ jobs:
       - name: Check partial coverage
         run: |
           moon run src/cli --target js samples/diamond/bom.cdx.json samples/diamond/findings.json samples/diamond/partial.openvex.json > partial.json
-          node -e 'const r=require("./partial.json"); if(r.decisions[0].outcome!=="Incomplete") process.exit(1)'
+          node -e 'const d=require("./partial.json").decisions[0]; if(d.outcome!=="Incomplete" || d.paths.length!==2 || d.paths[0].statement_ids.length!==1 || d.paths[1].statement_ids.length!==0) process.exit(1)'
       - name: Check complete coverage
         run: |
           moon run src/cli --target js samples/diamond/bom.cdx.json samples/diamond/findings.json samples/diamond/complete.openvex.json > complete.json

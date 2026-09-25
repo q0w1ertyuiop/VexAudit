@@ -21,6 +21,12 @@ test "parse three inputs and preserve the source statement in the decision" {
   let report = @audit.reconcile(inventory, statements, finding_rows)
   assert_eq(report.decisions[0].outcome, @audit.NotAffected)
   assert_eq(report.decisions[0].statement_ids, ["https://example.test/vex/1#s1"])
+  assert_eq(report.decisions[0].paths[0].purls, [
+    "pkg:generic/app@1", "pkg:generic/lib@2",
+  ])
+  assert_eq(report.decisions[0].paths[0].statement_ids, [
+    "https://example.test/vex/1#s1",
+  ])
 }
 
 ///|
