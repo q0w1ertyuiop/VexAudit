@@ -2,6 +2,7 @@
 package "q0w1ertyuiop/vexaudit/wire"
 
 import {
+  "moonbitlang/core/debug",
   "q0w1ertyuiop/vexaudit/audit",
 }
 
@@ -12,9 +13,30 @@ pub fn read_findings(StringView) -> Result[Array[@audit.Finding], String]
 
 pub fn read_openvex(StringView) -> Result[Array[@audit.Statement], String]
 
+pub fn read_trivy_json(StringView) -> Result[TrivyImport, String]
+
+pub fn trivy_report_json(@audit.Report, TrivyImport) -> String
+
 // Errors
 
 // Types and methods
+pub(all) struct TrivyImport {
+  findings : Array[@audit.Finding]
+  unresolved : Array[TrivyUnresolved]
+} derive(@debug.Debug)
+pub fn TrivyImport::to_repr(Self) -> @debug.Repr
+
+type TrivyReport derive(ToJson)
+pub fn TrivyReport::to_json(Self) -> Json
+
+pub(all) struct TrivyUnresolved {
+  row : String
+  target : String
+  vulnerability : String
+  reason : String
+} derive(ToJson, @debug.Debug)
+pub fn TrivyUnresolved::to_json(Self) -> Json
+pub fn TrivyUnresolved::to_repr(Self) -> @debug.Repr
 
 // Type aliases
 

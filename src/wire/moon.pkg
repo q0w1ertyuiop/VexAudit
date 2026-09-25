@@ -1,4 +1,5 @@
 import {
   "q0w1ertyuiop/vexaudit/audit",
   "moonbitlang/core/json",
+  "moonbitlang/core/debug",
 }

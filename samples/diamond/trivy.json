@@ -1,0 +1,25 @@
+{
+  "SchemaVersion": 2,
+  "ArtifactName": "demo-image",
+  "ArtifactType": "container_image",
+  "Results": [
+    {
+      "Target": "demo-image",
+      "Class": "lang-pkgs",
+      "Type": "generic",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2026-1000",
+          "PkgName": "shared",
+          "InstalledVersion": "2.0.0",
+          "PkgIdentifier": { "PURL": "pkg:generic/shared@2.0.0" }
+        },
+        {
+          "VulnerabilityID": "CVE-2026-2000",
+          "PkgName": "unknown",
+          "InstalledVersion": "1.0.0"
+        }
+      ]
+    }
+  ]
+}
