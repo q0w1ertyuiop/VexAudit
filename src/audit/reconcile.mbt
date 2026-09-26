@@ -1,23 +1,83 @@
 ///|
-fn component_purl(inventory : Inventory, bom_ref : String) -> String? {
+priv struct DependencyGraph {
+  purls : Map[String, String]
+  children : Map[String, Array[String]]
+  parents : Map[String, Array[String]]
+  valid : Bool
+}
+
+///|
+fn dependency_graph(inventory : Inventory) -> DependencyGraph {
+  let purls : Map[String, String] = Map([])
+  let children : Map[String, Array[String]] = Map([])
+  let parents : Map[String, Array[String]] = Map([])
+  let mut valid = true
   for component in inventory.components {
-    if component.bom_ref == bom_ref {
-      return Some(component.purl)
+    if purls.get(component.bom_ref) is Some(_) {
+      valid = false
+    } else {
+      purls.set(component.bom_ref, component.purl)
     }
   }
-  None
+  if purls.get(inventory.root_ref) is None {
+    valid = false
+  }
+  for edge in inventory.edges {
+    if purls.get(edge.parent) is None || purls.get(edge.child) is None {
+      valid = false
+    }
+    match children.get(edge.parent) {
+      Some(items) => items.push(edge.child)
+      None => children.set(edge.parent, [edge.child])
+    }
+    match parents.get(edge.child) {
+      Some(items) => items.push(edge.parent)
+      None => parents.set(edge.child, [edge.parent])
+    }
+  }
+  { purls, children, parents, valid, }
+}
+
+///|
+fn target_ancestors(
+  graph : DependencyGraph,
+  target : String,
+) -> Map[String, Bool] {
+  let relevant : Map[String, Bool] = Map([(target, true)])
+  let pending = [target]
+  let mut index = 0
+  while index < pending.length() {
+    let current = pending[index]
+    index = index + 1
+    match graph.parents.get(current) {
+      None => ()
+      Some(items) =>
+        for parent in items {
+          if relevant.get(parent) is None {
+            relevant.set(parent, true)
+            pending.push(parent)
+          }
+        }
+    }
+  }
+  relevant
 }
 
 ///|
 fn collect_paths(
-  inventory : Inventory,
+  graph : DependencyGraph,
+  node_count : Int,
+  relevant : Map[String, Bool],
   current : String,
   target : String,
   path : Array[String],
   paths : Array[Array[String]],
   uncertain : Ref[Bool],
 ) -> Unit {
-  if paths.length() >= 1024 || path.length() > inventory.components.length() {
+  if relevant.get(current) is None {
+    return
+  }
+  if paths.length() >= 1024 || path.length() > node_count {
     uncertain.val = true
     return
   }
@@ -25,7 +85,7 @@ fn collect_paths(
     uncertain.val = true
     return
   }
-  if component_purl(inventory, current) is None {
+  if graph.purls.get(current) is None {
     uncertain.val = true
     return
   }
@@ -38,10 +98,14 @@ fn collect_paths(
     paths.push(next)
     return
   }
-  for edge in inventory.edges {
-    if edge.parent == current {
-      collect_paths(inventory, edge.child, target, next, paths, uncertain)
-    }
+  match graph.children.get(current) {
+    None => ()
+    Some(items) =>
+      for child in items {
+        collect_paths(
+          graph, node_count, relevant, child, target, next, paths, uncertain,
+        )
+      }
   }
 }
 
@@ -53,7 +117,7 @@ priv struct Claim {
 
 ///|
 fn subject_applies(
-  inventory : Inventory,
+  graph : DependencyGraph,
   subject : Subject,
   finding : Finding,
   path : Array[String],
@@ -63,7 +127,7 @@ fn subject_applies(
     return false
   }
   for node in path {
-    if component_purl(inventory, node) == Some(subject.product_purl) {
+    if graph.purls.get(node) == Some(subject.product_purl) {
       return true
     }
   }
@@ -150,12 +214,23 @@ pub fn reconcile_one(
       detail: "finding component is absent from the SBOM",
     }
   }
+  let graph = dependency_graph(inventory)
   let paths : Array[Array[String]] = []
-  let uncertain = Ref(false)
+  let uncertain = Ref(!graph.valid)
   let mut missing_target_path = false
   for target in targets {
     let before = paths.length()
-    collect_paths(inventory, inventory.root_ref, target, [], paths, uncertain)
+    let relevant = target_ancestors(graph, target)
+    collect_paths(
+      graph,
+      inventory.components.length(),
+      relevant,
+      inventory.root_ref,
+      target,
+      [],
+      paths,
+      uncertain,
+    )
     if paths.length() == before {
       missing_target_path = true
     }
@@ -185,7 +260,7 @@ pub fn reconcile_one(
         continue
       }
       for subject_index, subject in statement.subjects {
-        if subject_applies(inventory, subject, finding, path) {
+        if subject_applies(graph, subject, finding, path) {
           claims.push({ statement_index, subject_index, })
         }
       }
@@ -226,7 +301,7 @@ pub fn reconcile_one(
     }
     let purls : Array[String] = []
     for node in path {
-      match component_purl(inventory, node) {
+      match graph.purls.get(node) {
         Some(purl) => purls.push(purl)
         None => uncertain.val = true
       }

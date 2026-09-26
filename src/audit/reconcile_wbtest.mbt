@@ -292,3 +292,101 @@ test "release gate accepts complete favorable claims and rejects uncertain findi
   assert_eq(all_findings_cleared(reconcile(inventory, [], [finding])), false)
   assert_eq(all_findings_cleared(reconcile(inventory, [], [])), true)
 }
+
+///|
+test "unrelated branching and cycles do not alter target path evidence" {
+  let inventory = diamond()
+  for layer in 0..<24 {
+    for side in 0..<2 {
+      let node = "unrelated-\{layer}-\{side}"
+      inventory.components.push({
+        bom_ref: node,
+        purl: "pkg:generic/\{node}@1",
+      })
+      if layer == 0 {
+        inventory.edges.push({ parent: "app", child: node, })
+      } else {
+        for previous_side in 0..<2 {
+          inventory.edges.push({
+            parent: "unrelated-\{layer - 1}-\{previous_side}",
+            child: node,
+          })
+        }
+      }
+    }
+  }
+  inventory.edges.push({ parent: "unrelated-23-0", child: "unrelated-0-0", })
+  let decision = reconcile_one(
+    inventory,
+    [claim("root", "pkg:generic/app@1", NotAffected)],
+    vulnerable_lib(),
+  )
+  assert_eq(decision.outcome, NotAffected)
+  assert_eq(decision.paths.length(), 2)
+  assert_eq(decision.paths[0].bom_refs, ["app", "left", "lib"])
+  assert_eq(decision.paths[1].bom_refs, ["app", "right", "lib"])
+}
+
+///|
+test "cycles that can reach the target still prevent a complete claim" {
+  let inventory = diamond()
+  inventory.edges.push({ parent: "left", child: "right", })
+  inventory.edges.push({ parent: "right", child: "left", })
+  let decision = reconcile_one(
+    inventory,
+    [claim("root", "pkg:generic/app@1", NotAffected)],
+    vulnerable_lib(),
+  )
+  assert_eq(decision.outcome, Incomplete)
+  assert_eq(decision.paths.length(), 4)
+}
+
+///|
+test "invalid references and duplicate BOM references cannot be pruned into success" {
+  let invalid = diamond()
+  invalid.edges.push({ parent: "app", child: "unknown", })
+  assert_eq(
+    reconcile_one(
+      invalid,
+      [claim("root", "pkg:generic/app@1", Fixed)],
+      vulnerable_lib(),
+    ).outcome,
+    Incomplete,
+  )
+  let duplicate = diamond()
+  duplicate.components.push({ bom_ref: "left", purl: "pkg:generic/another@1", })
+  assert_eq(
+    reconcile_one(
+      duplicate,
+      [claim("root", "pkg:generic/app@1", Fixed)],
+      vulnerable_lib(),
+    ).outcome,
+    Incomplete,
+  )
+}
+
+///|
+test "path enumeration stops conservatively at the report limit" {
+  let inventory : Inventory = {
+    root_ref: "app",
+    components: [
+      { bom_ref: "app", purl: "pkg:generic/app@1", },
+      { bom_ref: "lib", purl: "pkg:generic/lib@2", },
+    ],
+    edges: [],
+  }
+  for index in 0..<1024 {
+    let node = "branch-\{index}"
+    inventory.components.push({ bom_ref: node, purl: "pkg:generic/\{node}@1", })
+    inventory.edges.push({ parent: "app", child: node, })
+    inventory.edges.push({ parent: node, child: "lib", })
+  }
+  let statements = [claim("root", "pkg:generic/app@1", NotAffected)]
+  let exact = reconcile_one(inventory, statements, vulnerable_lib())
+  assert_eq(exact.outcome, NotAffected)
+  assert_eq(exact.paths.length(), 1024)
+  inventory.edges.push({ parent: "app", child: "lib", })
+  let exceeded = reconcile_one(inventory, statements, vulnerable_lib())
+  assert_eq(exceeded.outcome, Incomplete)
+  assert_eq(exceeded.paths.length(), 1024)
+}

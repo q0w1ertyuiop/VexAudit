@@ -14,6 +14,8 @@ The finding remains `Incomplete`: one OpenVEX statement covers the path through 
 
 Use `samples/diamond/history.openvex.json` to see an `under_investigation` claim superseded by a later `fixed` claim. The active claim appears in `statement_ids`; the older claim remains visible in each path's `superseded_statement_ids`.
 
+Use `samples/diamond/unrelated-cycle.cdx.json` instead of the original SBOM to add a separate cyclic branch. With `complete.openvex.json`, the finding still receives `NotAffected`: that branch cannot reach the affected component. Traversal indexes dependency edges and follows only branches that can reach each target, preserving the original order of relevant path evidence.
+
 For a [Trivy JSON report](https://trivy.dev/latest/docs/configuration/reporting/), pass `--trivy` before the three input files:
 
 ```sh
@@ -50,7 +52,7 @@ The findings document has this shape:
 
 `read_cyclonedx`, `read_openvex`, and `read_findings` return errors for malformed or unsupported inputs. `read_trivy_json` returns valid rows together with unresolved rows that lack identifiers needed for reconciliation. It does not guess a PURL from a package name. In particular, a VEX statement with a `not_affected` status needs a valid justification or an impact statement; an `affected` statement needs an action statement. No network lookup or alias inference occurs.
 
-The report describes claims and graph coverage; it does not authenticate the VEX author or independently verify the vulnerability analysis. A newer statement replaces an older one only when the document ID, author string, primary vulnerability ID, product PURL, and subcomponent set are identical. Equal timestamps, different documents or authors, and overlapping but different scopes remain visible as `Conflict` when statuses disagree. Timestamps must use RFC 3339; leap-second notation is not supported. Versionless PURL matching, qualifier subset matching, embedded VEX documents, non-PURL identifiers, and more than 1,024 dependency paths are outside this release's supported matching profile. If path traversal encounters a cycle or reaches the path limit, the outcome cannot be a complete favorable claim.
+The report describes claims and graph coverage; it does not authenticate the VEX author or independently verify the vulnerability analysis. A newer statement replaces an older one only when the document ID, author string, primary vulnerability ID, product PURL, and subcomponent set are identical. Equal timestamps, different documents or authors, and overlapping but different scopes remain visible as `Conflict` when statuses disagree. Timestamps must use RFC 3339; leap-second notation is not supported. Versionless PURL matching, qualifier subset matching, embedded VEX documents, non-PURL identifiers, and more than 1,024 dependency paths are outside this release's supported matching profile. If traversal encounters a cycle on a branch that can reach the target or exceeds the path limit, the outcome cannot be a complete favorable claim. Invalid dependency references or duplicate BOM references supplied directly to the core also prevent complete favorable claims.
 
 ## Development
 

@@ -38,6 +38,10 @@ jobs:
         run: |
           moon run src/cli --target js samples/diamond/bom.cdx.json samples/diamond/findings.json samples/diamond/complete.openvex.json > complete.json
           node -e 'const r=require("./complete.json"); if(r.decisions[0].outcome!=="NotAffected" || r.decisions[0].statement_ids.length!==2) process.exit(1)'
+      - name: Check unrelated cyclic branch
+        run: |
+          moon run src/cli --target js --require-clear samples/diamond/unrelated-cycle.cdx.json samples/diamond/findings.json samples/diamond/complete.openvex.json > unrelated-cycle.json
+          node -e 'const d=require("./unrelated-cycle.json").decisions[0]; if(d.outcome!=="NotAffected" || d.paths.length!==2 || d.paths.some(p=>p.bom_refs.some(ref=>ref.startsWith("unrelated-")))) process.exit(1)'
       - name: Check statement history
         run: |
           moon run src/cli --target js samples/diamond/bom.cdx.json samples/diamond/findings.json samples/diamond/history.openvex.json > history.json
