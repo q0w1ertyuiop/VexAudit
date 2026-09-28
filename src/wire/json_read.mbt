@@ -151,6 +151,7 @@ pub fn read_cyclonedx(source : StringView) -> Result[@audit.Inventory, String] {
     components.push(component)
   }
   let edges : Array[@audit.Edge] = []
+  let declared : Map[String, Bool] = Map([])
   let dependencies = match root.get("dependencies") {
     None => []
     Some(value) =>
@@ -172,6 +173,10 @@ pub fn read_cyclonedx(source : StringView) -> Result[@audit.Inventory, String] {
     if !has_ref(components, parent) {
       return Err("dependency refers to unknown component: \{parent}")
     }
+    if declared.get(parent) is Some(_) {
+      return Err("duplicate dependency declaration: \{parent}")
+    }
+    declared.set(parent, true)
     let children = match array_field(row, "dependsOn", path) {
       Ok(value) => value
       Err(message) => return Err(message)
@@ -191,6 +196,11 @@ pub fn read_cyclonedx(source : StringView) -> Result[@audit.Inventory, String] {
       }
       seen_children.set(child, true)
       edges.push({ parent, child, })
+    }
+  }
+  for component in components {
+    if declared.get(component.bom_ref) is None {
+      return Err("missing dependency declaration: \{component.bom_ref}")
     }
   }
   Ok({ root_ref, components, edges, })

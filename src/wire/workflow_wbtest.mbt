@@ -64,6 +64,38 @@ test "duplicate dependsOn entries are rejected" {
 }
 
 ///|
+test "every CycloneDX component needs one dependency declaration" {
+  let missing_leaf =
+    #|{"bomFormat":"CycloneDX","specVersion":"1.6","metadata":{"component":{"bom-ref":"app","purl":"pkg:generic/app@1"}},"components":[{"bom-ref":"lib","purl":"pkg:generic/lib@2"}],"dependencies":[{"ref":"app","dependsOn":["lib"]}]}
+  match read_cyclonedx(missing_leaf) {
+    Err(message) => assert_eq(message, "missing dependency declaration: lib")
+    Ok(_) => abort("undeclared dependency list was accepted")
+  }
+  let missing_graph =
+    #|{"bomFormat":"CycloneDX","specVersion":"1.6","metadata":{"component":{"bom-ref":"app","purl":"pkg:generic/app@1"}},"components":[]}
+  match read_cyclonedx(missing_graph) {
+    Err(message) => assert_eq(message, "missing dependency declaration: app")
+    Ok(_) => abort("absent dependency graph was accepted")
+  }
+  let explicit_empty =
+    #|{"bomFormat":"CycloneDX","specVersion":"1.6","metadata":{"component":{"bom-ref":"app","purl":"pkg:generic/app@1"}},"components":[],"dependencies":[{"ref":"app","dependsOn":[]}]}
+  match read_cyclonedx(explicit_empty) {
+    Ok(inventory) => assert_eq(inventory.edges.length(), 0)
+    Err(message) => abort(message)
+  }
+}
+
+///|
+test "repeated dependency declarations cannot imply two complete lists" {
+  let sbom =
+    #|{"bomFormat":"CycloneDX","specVersion":"1.6","metadata":{"component":{"bom-ref":"app","purl":"pkg:generic/app@1"}},"components":[{"bom-ref":"lib","purl":"pkg:generic/lib@2"}],"dependencies":[{"ref":"app","dependsOn":[]},{"ref":"app","dependsOn":["lib"]},{"ref":"lib","dependsOn":[]}]}
+  match read_cyclonedx(sbom) {
+    Err(message) => assert_eq(message, "duplicate dependency declaration: app")
+    Ok(_) => abort("repeated dependency declaration was accepted")
+  }
+}
+
+///|
 test "statement time overrides document time" {
   let vex =
     #|{"@context":"https://openvex.dev/ns/v0.2.0","@id":"https://example.test/vex/4","author":"Example Team","timestamp":"2026-09-25T00:00:00Z","version":1,"statements":[{"timestamp":"2026-09-24T00:00:00Z","vulnerability":{"name":"CVE-2026-1000"},"products":[{"@id":"pkg:generic/app@1"}],"status":"fixed"}]}

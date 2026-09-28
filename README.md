@@ -42,7 +42,7 @@ The first release uses exact PURL strings and explicit vulnerability IDs or alia
 
 ## Inputs
 
-The `wire` package reads CycloneDX 1.6 JSON, one or more standalone OpenVEX v0.2.0 JSON documents, a small scanner-independent findings document, and Trivy JSON vulnerability reports. The SBOM must identify its root in `metadata.component`, give each component a `bom-ref` and PURL, and use `dependencies` to connect the root to affected components. OpenVEX subjects must have PURL identifiers. The reader validates the fields it uses; it is not a full CycloneDX, OpenVEX, or Trivy JSON Schema validator.
+The `wire` package reads CycloneDX 1.6 JSON, one or more standalone OpenVEX v0.2.0 JSON documents, a small scanner-independent findings document, and Trivy JSON vulnerability reports. The SBOM must identify its root in `metadata.component`, give each component a `bom-ref` and PURL, and use `dependencies` to connect the root to affected components. Each component, including a leaf, must have exactly one dependency declaration; use an empty `dependsOn` array for a component with no dependencies. This follows CycloneDX's distinction between an empty declaration and an omitted component whose dependencies may be unknown. OpenVEX subjects must have PURL identifiers. The reader validates the fields it uses; it is not a full CycloneDX, OpenVEX, or Trivy JSON Schema validator.
 
 The findings document has this shape:
 
