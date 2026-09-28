@@ -294,14 +294,12 @@ pub fn read_openvex(
 }
 
 ///|
-/// Parse standalone documents in input order. Statement IDs must be unique
-/// across the entire set so the report can attribute each claim unambiguously.
+/// Parse standalone documents in input order. An empty set has no claims.
+/// Statement IDs must be unique across the entire set so the report can
+/// attribute each claim unambiguously.
 pub fn read_openvex_documents(
   sources : Array[String],
 ) -> Result[Array[@audit.Statement], String] {
-  if sources.is_empty() {
-    return Err("at least one OpenVEX document is required")
-  }
   let statements : Array[@audit.Statement] = []
   let seen : Map[String, Int] = Map([])
   for index, source in sources {

@@ -50,6 +50,31 @@ test "duplicate IDs across documents cannot obscure attribution" {
     }
     Ok(_) => abort("duplicate statement ID was accepted")
   }
-  assert_eq(read_openvex_documents([]) is Err(_), true)
   assert_eq(read_openvex_documents([document, "{}"]) is Err(_), true)
+}
+
+///|
+test "an audit can start without OpenVEX documents" {
+  let statements = match read_openvex_documents([]) {
+    Ok(value) => value
+    Err(message) => abort(message)
+  }
+  assert_eq(statements.length(), 0)
+  let inventory : @audit.Inventory = {
+    root_ref: "app",
+    components: [
+      { bom_ref: "app", purl: "pkg:generic/app@1", },
+      { bom_ref: "lib", purl: "pkg:generic/lib@2", },
+    ],
+    edges: [{ parent: "app", child: "lib", }],
+  }
+  let finding : @audit.Finding = {
+    id: "scan-1",
+    vulnerability: "CVE-2026-1000",
+    component_purl: "pkg:generic/lib@2",
+  }
+  let decision = @audit.reconcile_one(inventory, statements, finding)
+  assert_eq(decision.outcome, @audit.NoClaim)
+  assert_eq(decision.paths.length(), 1)
+  assert_eq(decision.paths[0].statement_ids, [])
 }

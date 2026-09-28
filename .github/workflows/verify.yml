@@ -30,6 +30,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: hustcer/setup-moonbit@v1
+      - name: Check audit before VEX is available
+        run: |
+          moon run src/cli --target js samples/diamond/bom.cdx.json samples/diamond/findings.json > baseline.json
+          node -e 'const d=require("./baseline.json").decisions[0]; if(d.outcome!=="NoClaim" || d.paths.length!==2 || d.paths.some(p=>p.statement_ids.length!==0)) process.exit(1)'
+          if moon run src/cli --target js --require-clear samples/diamond/bom.cdx.json samples/diamond/findings.json > baseline-gate.json; then exit 1; fi
+          node -e 'const d=require("./baseline-gate.json").decisions[0]; if(d.outcome!=="NoClaim") process.exit(1)'
       - name: Check partial coverage
         run: |
           moon run src/cli --target js samples/diamond/bom.cdx.json samples/diamond/findings.json samples/diamond/partial.openvex.json > partial.json

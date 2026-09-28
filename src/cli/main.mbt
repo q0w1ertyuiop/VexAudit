@@ -37,9 +37,9 @@ fn main {
     }
     input_start = input_start + 1
   }
-  if args.length() < input_start + 3 {
+  if args.length() < input_start + 2 {
     write_error(
-      "usage: vexaudit [--trivy] [--require-clear] <sbom.cdx.json> <findings.json|trivy.json> <openvex.json> [more.openvex.json ...]\n",
+      "usage: vexaudit [--trivy] [--require-clear] <sbom.cdx.json> <findings.json|trivy.json> [openvex.json ...]\n",
     )
     set_exit_code(2)
     return
