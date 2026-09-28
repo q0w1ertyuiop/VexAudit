@@ -13,6 +13,8 @@ pub fn read_findings(StringView) -> Result[Array[@audit.Finding], String]
 
 pub fn read_openvex(StringView) -> Result[Array[@audit.Statement], String]
 
+pub fn read_openvex_documents(Array[String]) -> Result[Array[@audit.Statement], String]
+
 pub fn read_trivy_json(StringView) -> Result[TrivyImport, String]
 
 pub fn trivy_report_json(@audit.Report, TrivyImport) -> String

@@ -37,17 +37,16 @@ fn main {
     }
     input_start = input_start + 1
   }
-  if args.length() != input_start + 3 {
+  if args.length() < input_start + 3 {
     write_error(
-      "usage: vexaudit [--trivy] [--require-clear] <sbom.cdx.json> <findings.json|trivy.json> <openvex.json>\n",
+      "usage: vexaudit [--trivy] [--require-clear] <sbom.cdx.json> <findings.json|trivy.json> <openvex.json> [more.openvex.json ...]\n",
     )
     set_exit_code(2)
     return
   }
   let sbom = read_text(args[input_start])
   let findings = read_text(args[input_start + 1])
-  let vex = read_text(args[input_start + 2])
-  if sbom.is_empty() || findings.is_empty() || vex.is_empty() {
+  if sbom.is_empty() || findings.is_empty() {
     write_error("vexaudit: unable to read an input file or input is empty\n")
     set_exit_code(2)
     return
@@ -83,7 +82,17 @@ fn main {
       }
     }
   }
-  let statements = match @wire.read_openvex(vex) {
+  let vex_documents : Array[String] = []
+  for index in (input_start + 2)..<args.length() {
+    let source = read_text(args[index])
+    if source.is_empty() {
+      write_error("vexaudit: unable to read OpenVEX file: \{args[index]}\n")
+      set_exit_code(2)
+      return
+    }
+    vex_documents.push(source)
+  }
+  let statements = match @wire.read_openvex_documents(vex_documents) {
     Ok(value) => value
     Err(message) => {
       write_error("vexaudit: \{message}\n")

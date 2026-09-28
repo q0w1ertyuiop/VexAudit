@@ -1,0 +1,23 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://example.test/vex/right",
+  "author": "Dependency Maintainers",
+  "timestamp": "2026-09-26T00:00:00Z",
+  "version": 1,
+  "statements": [
+    {
+      "@id": "https://example.test/vex/right#s1",
+      "vulnerability": { "name": "CVE-2026-1000" },
+      "products": [
+        {
+          "@id": "pkg:generic/right@1.0.0",
+          "subcomponents": [
+            { "@id": "pkg:generic/shared@2.0.0" }
+          ]
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path"
+    }
+  ]
+}

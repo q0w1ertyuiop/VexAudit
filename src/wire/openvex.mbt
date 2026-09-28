@@ -292,3 +292,34 @@ pub fn read_openvex(
   }
   Ok(statements)
 }
+
+///|
+/// Parse standalone documents in input order. Statement IDs must be unique
+/// across the entire set so the report can attribute each claim unambiguously.
+pub fn read_openvex_documents(
+  sources : Array[String],
+) -> Result[Array[@audit.Statement], String] {
+  if sources.is_empty() {
+    return Err("at least one OpenVEX document is required")
+  }
+  let statements : Array[@audit.Statement] = []
+  let seen : Map[String, Int] = Map([])
+  for index, source in sources {
+    let document_statements = match read_openvex(source) {
+      Ok(value) => value
+      Err(message) => return Err("OpenVEX document[\{index}]: \{message}")
+    }
+    for statement in document_statements {
+      match seen.get(statement.id) {
+        Some(previous) =>
+          return Err(
+            "duplicate OpenVEX statement ID in documents[\{previous}] and [\{index}]: \{statement.id}",
+          )
+        None => ()
+      }
+      seen.set(statement.id, index)
+      statements.push(statement)
+    }
+  }
+  Ok(statements)
+}

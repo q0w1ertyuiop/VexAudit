@@ -1,0 +1,23 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://example.test/vex/conflict",
+  "author": "Application Maintainers",
+  "timestamp": "2026-09-27T00:00:00Z",
+  "version": 1,
+  "statements": [
+    {
+      "@id": "https://example.test/vex/conflict#s1",
+      "vulnerability": { "name": "CVE-2026-1000" },
+      "products": [
+        {
+          "@id": "pkg:generic/demo-app@1.0.0",
+          "subcomponents": [
+            { "@id": "pkg:generic/shared@2.0.0" }
+          ]
+        }
+      ],
+      "status": "affected",
+      "action_statement": "Review this dependency before release."
+    }
+  ]
+}

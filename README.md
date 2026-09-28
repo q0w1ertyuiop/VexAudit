@@ -14,9 +14,17 @@ The finding remains `Incomplete`: one OpenVEX statement covers the path through 
 
 Use `samples/diamond/history.openvex.json` to see an `under_investigation` claim superseded by a later `fixed` claim. The active claim appears in `statement_ids`; the older claim remains visible in each path's `superseded_statement_ids`.
 
+Pass more than one OpenVEX file when claims come from separate maintainers:
+
+```sh
+moon run src/cli --target js --require-clear samples/diamond/bom.cdx.json samples/diamond/findings.json samples/diamond/partial.openvex.json samples/diamond/right.openvex.json
+```
+
+Together, these two documents cover both paths and yield `NotAffected`. Replace `right.openvex.json` with `conflict.openvex.json` to see a conflicting `affected` claim instead. Documents are read in argument order; a duplicate statement ID across files is rejected so report evidence remains attributable. Library callers can use `@wire.read_openvex_documents` for the same check.
+
 Use `samples/diamond/unrelated-cycle.cdx.json` instead of the original SBOM to add a separate cyclic branch. With `complete.openvex.json`, the finding still receives `NotAffected`: that branch cannot reach the affected component. Traversal indexes dependency edges and follows only branches that can reach each target, preserving the original order of relevant path evidence.
 
-For a [Trivy JSON report](https://trivy.dev/latest/docs/configuration/reporting/), pass `--trivy` before the three input files:
+For a [Trivy JSON report](https://trivy.dev/latest/docs/configuration/reporting/), pass `--trivy` before the input files:
 
 ```sh
 moon run src/cli --target js --trivy samples/diamond/bom.cdx.json samples/diamond/trivy.json samples/diamond/partial.openvex.json
@@ -26,7 +34,7 @@ This mode reads `Results[].Vulnerabilities[]` and joins each finding to the SBOM
 
 The `audit` package is a pure MoonBit core. It accepts an inventory, findings, and statements as values and returns one decision per finding. Each decision records the source statement IDs that contributed to it. Its `paths` array shows each dependency path as BOM references and PURLs, with the applicable statement IDs and statuses for that path. An empty `statement_ids` array on a path shows exactly where coverage is missing. `NoClaim`, `Incomplete`, and `Conflict` are distinct outcomes; the library never treats a missing claim as proof that a product is unaffected.
 
-The main library flow is `@wire.read_cyclonedx`, `@wire.read_findings` or `@wire.read_trivy_json`, `@wire.read_openvex`, then `@audit.reconcile` and `@audit.report_json` or `@wire.trivy_report_json`. The command uses the same API and prints the JSON report. Invalid input or unreadable files exit with status 2. Without a gate, a valid report exits with status 0, including when its outcome is `Incomplete` or `Conflict` or it has unresolved Trivy rows.
+The main library flow is `@wire.read_cyclonedx`, `@wire.read_findings` or `@wire.read_trivy_json`, `@wire.read_openvex` or `@wire.read_openvex_documents`, then `@audit.reconcile` and `@audit.report_json` or `@wire.trivy_report_json`. The command uses the same API and prints the JSON report. Invalid input or unreadable files exit with status 2. Without a gate, a valid report exits with status 0, including when its outcome is `Incomplete` or `Conflict` or it has unresolved Trivy rows.
 
 For CI, add `--require-clear` before the input paths (it can be combined with `--trivy` in either order). This exits with status 0 only when every finding has a complete `NotAffected` or `Fixed` outcome and every Trivy row was resolved. It exits with status 1 for any other outcome or unresolved row, while still writing the full JSON report to stdout. An empty findings set passes. The reusable `@audit.all_findings_cleared` function applies the same outcome rule to a library report; callers using Trivy must also inspect `TrivyImport.unresolved`.
 
@@ -34,7 +42,7 @@ The first release uses exact PURL strings and explicit vulnerability IDs or alia
 
 ## Inputs
 
-The `wire` package reads CycloneDX 1.6 JSON, standalone OpenVEX v0.2.0 JSON, a small scanner-independent findings document, and Trivy JSON vulnerability reports. The SBOM must identify its root in `metadata.component`, give each component a `bom-ref` and PURL, and use `dependencies` to connect the root to affected components. OpenVEX subjects must have PURL identifiers. The reader validates the fields it uses; it is not a full CycloneDX, OpenVEX, or Trivy JSON Schema validator.
+The `wire` package reads CycloneDX 1.6 JSON, one or more standalone OpenVEX v0.2.0 JSON documents, a small scanner-independent findings document, and Trivy JSON vulnerability reports. The SBOM must identify its root in `metadata.component`, give each component a `bom-ref` and PURL, and use `dependencies` to connect the root to affected components. OpenVEX subjects must have PURL identifiers. The reader validates the fields it uses; it is not a full CycloneDX, OpenVEX, or Trivy JSON Schema validator.
 
 The findings document has this shape:
 
