@@ -51,6 +51,19 @@ test "unknown BOM references cannot fabricate graph coverage" {
 }
 
 ///|
+test "duplicate dependsOn entries are rejected" {
+  let sbom =
+    #|{"bomFormat":"CycloneDX","specVersion":"1.6","metadata":{"component":{"bom-ref":"app","purl":"pkg:generic/app@1"}},"components":[{"bom-ref":"lib","purl":"pkg:generic/lib@2"}],"dependencies":[{"ref":"app","dependsOn":["lib","lib"]}]}
+  match read_cyclonedx(sbom) {
+    Ok(_) => abort("duplicate dependency was accepted")
+    Err(message) => {
+      assert_eq(message.contains("SBOM.dependencies[0].dependsOn"), true)
+      assert_eq(message.contains("lib"), true)
+    }
+  }
+}
+
+///|
 test "statement time overrides document time" {
   let vex =
     #|{"@context":"https://openvex.dev/ns/v0.2.0","@id":"https://example.test/vex/4","author":"Example Team","timestamp":"2026-09-25T00:00:00Z","version":1,"statements":[{"timestamp":"2026-09-24T00:00:00Z","vulnerability":{"name":"CVE-2026-1000"},"products":[{"@id":"pkg:generic/app@1"}],"status":"fixed"}]}

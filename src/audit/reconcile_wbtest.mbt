@@ -430,3 +430,21 @@ test "path enumeration stops conservatively at the report limit" {
   assert_eq(exceeded.outcome, Incomplete)
   assert_eq(exceeded.paths.length(), 1024)
 }
+
+///|
+test "duplicate dependency edges do not multiply path evidence" {
+  let inventory = diamond()
+  for _ in 0..<1025 {
+    inventory.edges.push({ parent: "app", child: "left", })
+    inventory.edges.push({ parent: "left", child: "lib", })
+  }
+  let decision = reconcile_one(
+    inventory,
+    [claim("root", "pkg:generic/app@1", NotAffected)],
+    vulnerable_lib(),
+  )
+  assert_eq(decision.outcome, NotAffected)
+  assert_eq(decision.paths.length(), 2)
+  assert_eq(decision.paths[0].bom_refs, ["app", "left", "lib"])
+  assert_eq(decision.paths[1].bom_refs, ["app", "right", "lib"])
+}

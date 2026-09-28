@@ -176,6 +176,7 @@ pub fn read_cyclonedx(source : StringView) -> Result[@audit.Inventory, String] {
       Ok(value) => value
       Err(message) => return Err(message)
     }
+    let seen_children : Map[String, Bool] = Map([])
     for child_index, child_json in children {
       let child = match
         string(child_json, "\{path}.dependsOn[\{child_index}]") {
@@ -185,6 +186,10 @@ pub fn read_cyclonedx(source : StringView) -> Result[@audit.Inventory, String] {
       if !has_ref(components, child) {
         return Err("dependency refers to unknown component: \{child}")
       }
+      if seen_children.get(child) is Some(_) {
+        return Err("duplicate dependency in \{path}.dependsOn: \{child}")
+      }
+      seen_children.set(child, true)
       edges.push({ parent, child, })
     }
   }

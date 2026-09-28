@@ -11,6 +11,7 @@ fn dependency_graph(inventory : Inventory) -> DependencyGraph {
   let purls : Map[String, String] = Map([])
   let children : Map[String, Array[String]] = Map([])
   let parents : Map[String, Array[String]] = Map([])
+  let seen_edges : Map[String, Map[String, Bool]] = Map([])
   let mut valid = true
   for component in inventory.components {
     if purls.get(component.bom_ref) is Some(_) {
@@ -26,13 +27,24 @@ fn dependency_graph(inventory : Inventory) -> DependencyGraph {
     if purls.get(edge.parent) is None || purls.get(edge.child) is None {
       valid = false
     }
-    match children.get(edge.parent) {
-      Some(items) => items.push(edge.child)
-      None => children.set(edge.parent, [edge.child])
+    let parent_edges = match seen_edges.get(edge.parent) {
+      Some(items) => items
+      None => {
+        let items : Map[String, Bool] = Map([])
+        seen_edges.set(edge.parent, items)
+        items
+      }
     }
-    match parents.get(edge.child) {
-      Some(items) => items.push(edge.parent)
-      None => parents.set(edge.child, [edge.parent])
+    if parent_edges.get(edge.child) is None {
+      parent_edges.set(edge.child, true)
+      match children.get(edge.parent) {
+        Some(items) => items.push(edge.child)
+        None => children.set(edge.parent, [edge.child])
+      }
+      match parents.get(edge.child) {
+        Some(items) => items.push(edge.parent)
+        None => parents.set(edge.child, [edge.parent])
+      }
     }
   }
   { purls, children, parents, valid, }
