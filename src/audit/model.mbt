@@ -87,9 +87,12 @@ pub extend Statement with @debug.Debug::{to_repr}
 
 ///|
 /// covers some, but not every, dependency path or the graph is uncertain.
+/// Mixed means separate paths have different statuses; Conflict means active
+/// statements disagree on at least one individual path.
 pub(all) enum Outcome {
   NoClaim
   Incomplete
+  Mixed
   Conflict
   NotAffected
   Affected

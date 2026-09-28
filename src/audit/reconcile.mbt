@@ -252,6 +252,7 @@ pub fn reconcile_one(
   let statement_ids : Array[String] = []
   let path_evidence : Array[PathEvidence] = []
   let mut uncovered = false
+  let mut path_conflict = false
   for path in paths {
     let claims : Array[Claim] = []
     for statement_index, statement in statements {
@@ -299,6 +300,9 @@ pub fn reconcile_one(
     if path_statement_ids.is_empty() {
       uncovered = true
     }
+    if path_statuses.length() > 1 {
+      path_conflict = true
+    }
     let purls : Array[String] = []
     for node in path {
       match graph.purls.get(node) {
@@ -314,8 +318,10 @@ pub fn reconcile_one(
       statuses: path_statuses,
     })
   }
-  let (outcome, detail) = if statuses.length() > 1 {
+  let (outcome, detail) = if path_conflict {
     (Conflict, "applicable statements disagree on status")
+  } else if statuses.length() > 1 {
+    (Mixed, "dependency paths carry different statuses")
   } else if statuses.is_empty() {
     (NoClaim, "no OpenVEX statement applies")
   } else if uncovered {

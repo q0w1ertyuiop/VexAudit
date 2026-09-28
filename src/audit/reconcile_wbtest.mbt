@@ -97,7 +97,7 @@ test "all dependency paths must carry the same claim" {
 }
 
 ///|
-test "disagreeing claims remain visible" {
+test "different dependency paths retain their distinct statuses" {
   let decision = reconcile_one(
     diamond(),
     [
@@ -106,9 +106,36 @@ test "disagreeing claims remain visible" {
     ],
     vulnerable_lib(),
   )
-  assert_eq(decision.outcome, Conflict)
+  assert_eq(decision.outcome, Mixed)
   assert_eq(decision.paths[0].statuses, [NotAffected])
   assert_eq(decision.paths[1].statuses, [Affected])
+}
+
+///|
+test "contradictory active claims on one path remain a conflict" {
+  let decision = reconcile_one(
+    diamond(),
+    [
+      claim("clear", "pkg:generic/app@1", NotAffected),
+      claim("affected", "pkg:generic/app@1", Affected),
+    ],
+    vulnerable_lib(),
+  )
+  assert_eq(decision.outcome, Conflict)
+  assert_eq(decision.paths[0].statuses, [NotAffected, Affected])
+  assert_eq(decision.paths[1].statuses, [NotAffected, Affected])
+}
+
+///|
+test "an affected path does not establish the unclaimed path status" {
+  let decision = reconcile_one(
+    diamond(),
+    [claim("left-affected", "pkg:generic/left@1", Affected)],
+    vulnerable_lib(),
+  )
+  assert_eq(decision.outcome, Incomplete)
+  assert_eq(decision.paths[0].statuses, [Affected])
+  assert_eq(decision.paths[1].statuses, [])
 }
 
 ///|
@@ -263,6 +290,19 @@ test "release gate accepts complete favorable claims and rejects uncertain findi
     [finding],
   )
   assert_eq(all_findings_cleared(clear), true)
+  assert_eq(
+    all_findings_cleared(
+      reconcile(
+        inventory,
+        [
+          claim("left-clear", "pkg:generic/left@1", NotAffected),
+          claim("right-affected", "pkg:generic/right@1", Affected),
+        ],
+        [finding],
+      ),
+    ),
+    false,
+  )
   assert_eq(
     all_findings_cleared(
       reconcile(inventory, [claim("fixed", "pkg:generic/app@1", Fixed)], [

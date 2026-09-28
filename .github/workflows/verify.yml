@@ -44,6 +44,8 @@ jobs:
           node -e 'const d=require("./joined.json").decisions[0]; if(d.outcome!=="NotAffected" || d.statement_ids.length!==2 || d.statement_ids[1]!=="https://example.test/vex/right#s1") process.exit(1)'
           if moon run src/cli --target js --require-clear samples/diamond/bom.cdx.json samples/diamond/findings.json samples/diamond/partial.openvex.json samples/diamond/conflict.openvex.json > conflict.json; then exit 1; fi
           node -e 'const d=require("./conflict.json").decisions[0]; if(d.outcome!=="Conflict" || d.statement_ids.length!==2) process.exit(1)'
+          if moon run src/cli --target js --require-clear samples/diamond/bom.cdx.json samples/diamond/findings.json samples/diamond/partial.openvex.json samples/diamond/right-affected.openvex.json > mixed.json; then exit 1; fi
+          node -e 'const d=require("./mixed.json").decisions[0]; if(d.outcome!=="Mixed" || d.paths[0].statuses[0]!=="NotAffected" || d.paths[1].statuses[0]!=="Affected") process.exit(1)'
       - name: Check unrelated cyclic branch
         run: |
           moon run src/cli --target js --require-clear samples/diamond/unrelated-cycle.cdx.json samples/diamond/findings.json samples/diamond/complete.openvex.json > unrelated-cycle.json

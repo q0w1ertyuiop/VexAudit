@@ -60,6 +60,7 @@ pub fn Inventory::to_repr(Self) -> @debug.Repr
 pub(all) enum Outcome {
   NoClaim
   Incomplete
+  Mixed
   Conflict
   NotAffected
   Affected
